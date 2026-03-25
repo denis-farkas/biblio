@@ -1,18 +1,18 @@
-import { UserDB } from "../database/db.provider.js";
+import query from "../database/init.database.js";
 // Middleware pour vérifier le statut d'administrateur de l'utilisateur
 const checkAdmin = async (req, res, next) => {
-  const userId = req.body.userId || req.body.id_user;
-  if (!userId) {
-    return res.status(401).json({ message: "Utilisateur non authentifié" });
-  }
-
-  const oneUser = await UserDB.readOneUser(userId);
-  const role = oneUser?.result?.[0]?.role || null;
-
-  if (!role) {
-    return res.status(404).json({ message: "Utilisateur introuvable" });
-  }
-
+  // Récupération de l'identifiant de l'utilisateur depuis la requête
+  const userId = req.body.id_user;
+  // Requête SQL pour obtenir le rôle de l'utilisateur
+  const userSql = `
+    SELECT id_user, role
+    FROM user
+    WHERE id_user = ?
+  `;
+  // Exécution de la requête SQL
+  const userRes = await query(userSql, [userId]);
+  const user = userRes[0];
+  const role = user.role;
   // Vérification si l'utilisateur a le rôle d'administrateur
   if (role !== "admin") {
     return res

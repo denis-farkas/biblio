@@ -1,8 +1,5 @@
 const params = new URLSearchParams(window.location.search);
-const rawBookId = params.get("id") || params.get("id_books") || "";
-const parsedBookId = Number(rawBookId);
-const bookId =
-  Number.isInteger(parsedBookId) && parsedBookId > 0 ? parsedBookId : null;
+const bookId = params.get("id") || params.get("id_books") || "";
 const apiFromQuery = params.get("api") || "";
 
 const apiLog = document.getElementById("apiLog");

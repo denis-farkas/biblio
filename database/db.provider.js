@@ -1,9 +1,12 @@
 import { bookDB as sqlBookDB } from "./book.database.js";
 import { genreDB as sqlGenreDB } from "./genre.database.js";
 import { UserDB as sqlUserDB } from "./user.database.js";
+import { commentDB as sqlCommentDB } from "./comment.database.js";
+
 import { bookMongoDB } from "../database-mongo/book.database.mongo.js";
 import { genreMongoDB } from "../database-mongo/genre.database.mongo.js";
 import { userMongoDB } from "../database-mongo/user.database.mongo.js";
+import { commentMongoDB } from "../database-mongo/comment.database.mongo.js";
 
 const useMongo =
   String(process.env.USE_MONGO || "false").toLowerCase() === "true";
@@ -13,11 +16,7 @@ const normalizeInsert = (mongoResult) => ({
 });
 
 const normalizeUpdateDelete = (mongoResult) => ({
-  affectedRows:
-    mongoResult?.matchedCount ??
-    mongoResult?.modifiedCount ??
-    mongoResult?.deletedCount ??
-    0,
+  affectedRows: mongoResult?.modifiedCount ?? mongoResult?.deletedCount ?? 0,
 });
 
 const normalizeMongoBook = (doc) => ({
@@ -42,6 +41,14 @@ const normalizeMongoUser = (doc) => ({
   email: doc?.email,
   role: doc?.role,
   password: doc?.password,
+});
+
+const normalizeMongoComment = (doc) => ({
+  id_comment: String(doc?._id),
+  content: doc?.content,
+  created_at: doc?.created_at,
+  verified: doc?.verified,
+  updated_at: doc?.updated_at,
 });
 
 const mongoBookAdapter = {
@@ -194,6 +201,72 @@ const mongoUserAdapter = {
   },
 };
 
+const mongoCommentAdapter = {
+  readComment: async () => {
+    const response = await commentMongoDB.readComments();
+    return {
+      error: response.error,
+      result: Array.isArray(response.result)
+        ? response.result.map(normalizeMongoComment)
+        : [],
+    };
+  },
+  readOneComment: async (id) => {
+    const response = await commentMongoDB.readOneComment(id);
+    return {
+      error: response.error,
+      result: response.result ? [normalizeMongoComment(response.result)] : [],
+    };
+  },
+  readCommentByBook: async (id_books) => {
+    const response = await commentMongoDB.readCommentByBook(id_books);
+    return {
+      error: response.error,
+      result: Array.isArray(response.result)
+        ? response.result.map(normalizeMongoComment)
+        : [],
+    };
+  },
+  readCommentByUser: async (id_user) => {
+    const response = await commentMongoDB.readCommentByUser(id_user);
+    return {
+      error: response.error,
+      result: Array.isArray(response.result)
+        ? response.result.map(normalizeMongoComment)
+        : [],
+    };
+  },
+  getUserComment: async (id_comment) => {
+    const response = await commentMongoDB.getUserComment(id_comment);
+    return {
+      error: response.error,
+      idUser: response.idUser,
+    };
+  },
+  createComment: async (...args) => {
+    const response = await commentMongoDB.createComment(...args);
+    return {
+      error: response.error,
+      result: normalizeInsert(response.result),
+    };
+  },
+  updateComment: async (...args) => {
+    const response = await commentMongoDB.updateComment(...args);
+    return {
+      error: response.error,
+      result: normalizeUpdateDelete(response.result),
+    };
+  },
+  deleteOneComment: async (id) => {
+    const response = await commentMongoDB.deleteOneComment(id);
+    return {
+      error: response.error,
+      result: normalizeUpdateDelete(response.result),
+    };
+  },
+};
+
 export const bookDB = useMongo ? mongoBookAdapter : sqlBookDB;
 export const genreDB = useMongo ? mongoGenreAdapter : sqlGenreDB;
 export const UserDB = useMongo ? mongoUserAdapter : sqlUserDB;
+export const commentDB = useMongo ? mongoCommentAdapter : sqlCommentDB;

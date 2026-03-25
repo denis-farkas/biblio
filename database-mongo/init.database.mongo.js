@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -6,20 +6,25 @@ dotenv.config();
 const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017";
 const mongoDbName = process.env.MONGO_DB_NAME || "bibliotheque_mongo";
 
+let client = null;
+let db = null;
+
 export const getMongoDb = async () => {
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection.db;
+  if (db) {
+    return db;
   }
 
-  await mongoose.connect(mongoUri, {
-    dbName: mongoDbName,
-  });
+  client = new MongoClient(mongoUri);
+  await client.connect();
+  db = client.db(mongoDbName);
 
-  return mongoose.connection.db;
+  return db;
 };
 
 export const closeMongoConnection = async () => {
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
+  if (client) {
+    await client.close();
+    client = null;
+    db = null;
   }
 };

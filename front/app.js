@@ -114,6 +114,12 @@ function renderBooks(books) {
   }
 
   books.forEach((book) => {
+    const bookId = Number(book.id_books ?? book.id);
+    const hasValidId = Number.isInteger(bookId) && bookId > 0;
+    const detailsHref = hasValidId
+      ? `./book.html?id=${encodeURIComponent(bookId)}&api=${encodeURIComponent(getApiBaseUrl())}`
+      : "#";
+
     const col = document.createElement("div");
     col.className = "col-12 col-md-6 col-xl-4";
 
@@ -122,7 +128,7 @@ function renderBooks(books) {
         <h3 class="mb-1">${book.title}</h3>
         <p class="mb-1"><strong>Auteur:</strong> ${book.autor}</p>
         <p class="mb-2"><strong>Genre:</strong> ${book.genre}</p>
-        <a class="btn btn-outline-primary btn-sm" href="./book.html?id=${book.Id_books}&api=${encodeURIComponent(getApiBaseUrl())}">
+        <a class="btn btn-outline-primary btn-sm" href="./book.html?id=${book.id_books}&api=${encodeURIComponent(getApiBaseUrl())}">
           Voir la fiche
         </a>
       </article>

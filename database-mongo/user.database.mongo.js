@@ -1,13 +1,20 @@
+import { ObjectId } from "mongodb";
 import { getMongoDb } from "./init.database.mongo.js";
-import { UserModel } from "./models/user.model.js";
+
+const toObjectId = (id) => {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  return new ObjectId(id);
+};
 
 const emailExist = async (email) => {
   let error = null;
   let result = null;
 
   try {
-    await getMongoDb();
-    const count = await UserModel.countDocuments({ email });
+    const db = await getMongoDb();
+    const count = await db.collection("user").countDocuments({ email });
     result = count;
   } catch (e) {
     error = e.message;
@@ -22,14 +29,14 @@ const signUp = async (surname, email, hashedPassword, role) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    const createdUser = await UserModel.create({
+    const db = await getMongoDb();
+    result = await db.collection("user").insertOne({
       surname,
       email,
       password: hashedPassword,
       role,
+      created_at: new Date(),
     });
-    result = { insertedId: createdUser._id };
   } catch (e) {
     error = e.message;
     console.error("Mongo error signUp:", e);
@@ -43,10 +50,12 @@ const read = async () => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await UserModel.find({}, { surname: 1, email: 1, role: 1 })
+    const db = await getMongoDb();
+    result = await db
+      .collection("user")
+      .find({}, { projection: { surname: 1, email: 1, role: 1 } })
       .sort({ surname: -1 })
-      .lean();
+      .toArray();
   } catch (e) {
     error = e.message;
     console.error("Mongo error reading users:", e);
@@ -60,14 +69,20 @@ const readOneUser = async (id) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await UserModel.findById(id, {
-      surname: 1,
-      email: 1,
-      role: 1,
-    }).lean();
+    const objectId = toObjectId(id);
+    if (!objectId) {
+      return { error: "ID Mongo invalide", result: null };
+    }
+
+    const db = await getMongoDb();
+    result = await db
+      .collection("user")
+      .findOne(
+        { _id: objectId },
+        { projection: { surname: 1, email: 1, role: 1 } },
+      );
   } catch (e) {
-    error = e.name === "CastError" ? "ID Mongo invalide" : e.message;
+    error = e.message;
     console.error("Mongo error reading one user:", e);
   } finally {
     return { error, result };
@@ -79,8 +94,8 @@ const signIn = async (email) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await UserModel.findOne({ email }).lean();
+    const db = await getMongoDb();
+    result = await db.collection("user").findOne({ email });
   } catch (e) {
     error = e.message;
     console.error("Mongo error signIn:", e);
@@ -94,20 +109,26 @@ const updateUser = async (surname, email, hashedPassword, role, id) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await UserModel.updateOne(
-      { _id: id },
+    const objectId = toObjectId(id);
+    if (!objectId) {
+      return { error: "ID Mongo invalide", result: null };
+    }
+
+    const db = await getMongoDb();
+    result = await db.collection("user").updateOne(
+      { _id: objectId },
       {
         $set: {
           surname,
           email,
           password: hashedPassword,
           role,
+          updated_at: new Date(),
         },
       },
     );
   } catch (e) {
-    error = e.name === "CastError" ? "ID Mongo invalide" : e.message;
+    error = e.message;
     console.error("Mongo error updateUser:", e);
   } finally {
     return { error, result };

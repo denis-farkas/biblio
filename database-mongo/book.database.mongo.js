@@ -1,13 +1,20 @@
+import { ObjectId } from "mongodb";
 import { getMongoDb } from "./init.database.mongo.js";
-import { BookModel } from "./models/book.model.js";
+
+const toObjectId = (id) => {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  return new ObjectId(id);
+};
 
 const readBooks = async () => {
   let error = null;
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await BookModel.find({}).sort({ title: 1 }).lean();
+    const db = await getMongoDb();
+    result = await db.collection("books").find({}).sort({ title: 1 }).toArray();
   } catch (e) {
     error = e.message;
     console.error("Mongo error reading books:", e);
@@ -21,10 +28,15 @@ const readOneBook = async (id) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await BookModel.findById(id).lean();
+    const objectId = toObjectId(id);
+    if (!objectId) {
+      return { error: "ID Mongo invalide", result: null };
+    }
+
+    const db = await getMongoDb();
+    result = await db.collection("books").findOne({ _id: objectId });
   } catch (e) {
-    error = e.name === "CastError" ? "ID Mongo invalide" : e.message;
+    error = e.message;
     console.error("Mongo error reading one book:", e);
   } finally {
     return { error, result };
@@ -44,8 +56,8 @@ const createBook = async (
   let result = null;
 
   try {
-    await getMongoDb();
-    const createdBook = await BookModel.create({
+    const db = await getMongoDb();
+    result = await db.collection("books").insertOne({
       title,
       autor,
       resume,
@@ -53,8 +65,8 @@ const createBook = async (
       cover,
       genre,
       verified,
+      created_at: new Date(),
     });
-    result = { insertedId: createdBook._id };
   } catch (e) {
     error = e.message;
     console.error("Mongo error creating book:", e);
@@ -77,9 +89,14 @@ const updateBook = async (
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await BookModel.updateOne(
-      { _id: id },
+    const objectId = toObjectId(id);
+    if (!objectId) {
+      return { error: "ID Mongo invalide", result: null };
+    }
+
+    const db = await getMongoDb();
+    result = await db.collection("books").updateOne(
+      { _id: objectId },
       {
         $set: {
           title,
@@ -89,11 +106,12 @@ const updateBook = async (
           cover,
           genre,
           verified,
+          updated_at: new Date(),
         },
       },
     );
   } catch (e) {
-    error = e.name === "CastError" ? "ID Mongo invalide" : e.message;
+    error = e.message;
     console.error("Mongo error updating book:", e);
   } finally {
     return { error, result };
@@ -105,10 +123,15 @@ const deleteOneBook = async (id) => {
   let result = null;
 
   try {
-    await getMongoDb();
-    result = await BookModel.deleteOne({ _id: id });
+    const objectId = toObjectId(id);
+    if (!objectId) {
+      return { error: "ID Mongo invalide", result: null };
+    }
+
+    const db = await getMongoDb();
+    result = await db.collection("books").deleteOne({ _id: objectId });
   } catch (e) {
-    error = e.name === "CastError" ? "ID Mongo invalide" : e.message;
+    error = e.message;
     console.error("Mongo error deleting book:", e);
   } finally {
     return { error, result };
